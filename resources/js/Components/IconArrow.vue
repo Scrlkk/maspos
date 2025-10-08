@@ -1,0 +1,16 @@
+<script setup></script>
+
+<template>
+    <svg
+        width="11"
+        height="11"
+        viewBox="0 0 11 11"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <path
+            d="M2.71879 4.83327H10.8332V6.1666H2.71879L6.29477 9.74253L5.35197 10.6853L0.166504 5.49993L5.35197 0.314453L6.29477 1.25726L2.71879 4.83327Z"
+            fill="#E8E8E8"
+        />
+    </svg>
+</template>
