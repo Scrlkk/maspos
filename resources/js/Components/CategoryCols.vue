@@ -11,6 +11,6 @@ const props = defineProps({
     <section
         :class="`flex items-center px-5 py-2 cursor-pointer ${category.bgColor} rounded-lg ${category.textColor}`"
     >
-        {{ category.name }}
+        {{ category.nama }}
     </section>
 </template>
