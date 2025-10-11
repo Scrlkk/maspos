@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from "vue";
+import { ref, computed, onMounted, nextTick, onUnmounted } from "vue";
 import { router, Link, usePage } from "@inertiajs/vue3";
 import IconPlus from "@/Components/IconPlus.vue";
 import CategoryCols from "@/Components/CategoryCols.vue";
@@ -16,24 +16,41 @@ const props = defineProps({
 });
 
 const page = usePage();
+const searchQuery = ref("");
+const selectedCategoryId = ref(0);
+const showUserMenu = ref(false);
 
-// Get categories from page props
+const emit = defineEmits(["search", "categorySelect"]);
+
+// Get authenticated user
+const user = computed(() => page.props.auth?.user);
+
+// Get cart data
+const cartData = computed(() => page.props.cartData || { total: 0, count: 0 });
+const cartTotal = computed(() => cartData.value.total);
+const cartCount = computed(() => cartData.value.count);
+const hasCartItems = computed(() => cartCount.value > 0);
+
 const dbCategories = computed(() => page.props.categories || []);
 
-// Computed categories with "Semua" added at the beginning
 const categories = computed(() => {
     const allCategory = {
         id: 0,
         nama: "Semua",
-        bgColor: "bg-blue-500",
-        textColor: "text-white",
+        bgColor: selectedCategoryId.value === 0 ? "bg-blue-600" : "bg-blue-100",
+        textColor:
+            selectedCategoryId.value === 0 ? "text-white" : "text-blue-600",
     };
 
     const mappedCategories = dbCategories.value.map((cat) => ({
         id: cat.id,
         nama: cat.nama,
-        bgColor: "bg-blue-100",
-        textColor: "text-blue-500",
+        bgColor:
+            selectedCategoryId.value === cat.id ? "bg-blue-600" : "bg-blue-100",
+        textColor:
+            selectedCategoryId.value === cat.id
+                ? "text-white"
+                : "text-blue-600",
     }));
 
     return [allCategory, ...mappedCategories];
@@ -45,6 +62,41 @@ const contentHeight = computed(() => {
     }
     return props.customHeight;
 });
+
+// Get user initials for avatar
+const userInitials = computed(() => {
+    if (!user.value?.name) return "U";
+    return user.value.name
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+});
+
+// Handle search
+const handleSearch = () => {
+    emit("search", searchQuery.value);
+};
+
+// Handle category
+const handleCategoryClick = (categoryId) => {
+    selectedCategoryId.value = categoryId;
+    emit("categorySelect", categoryId);
+};
+
+// User menu toggle
+const toggleUserMenu = () => {
+    showUserMenu.value = !showUserMenu.value;
+};
+
+// Close user menu when clicking outside
+const userMenuRef = ref(null);
+const handleClickOutside = (event) => {
+    if (userMenuRef.value && !userMenuRef.value.contains(event.target)) {
+        showUserMenu.value = false;
+    }
+};
 
 // Scroll functionality
 const categoryContainer = ref(null);
@@ -91,18 +143,41 @@ onMounted(() => {
             window.addEventListener("resize", checkScrollButtons);
         }
     });
+
+    document.addEventListener("click", handleClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener("click", handleClickOutside);
 });
 
 const logout = () => {
-    router.post(route("logout"));
+    showUserMenu.value = false;
+
+    // Check jika ada payment success yang perlu clear cart
+    if (localStorage.getItem("payment_success_clear_cart")) {
+        // Clear cart dulu sebelum logout
+        router.post(
+            route("cart.clear"),
+            {},
+            {
+                onSuccess: () => {
+                    localStorage.removeItem("payment_success_clear_cart");
+                    // Baru logout setelah cart ter-clear
+                    router.post(route("logout"));
+                },
+            }
+        );
+    } else {
+        // Logout normal jika tidak ada payment success
+        router.post(route("logout"));
+    }
 };
 </script>
 
 <template>
     <section class="bg-[#EDF0F2] p-6 w-full h-screen relative">
-        <div
-            class="sticky top-6 bg-white py-4 px-6 rounded-lg shadow-md z-30 overflow-hidden"
-        >
+        <div class="sticky top-6 bg-white py-4 px-6 rounded-lg shadow-md z-30">
             <!-- NAVBAR -->
             <div class="grid grid-cols-[20%_80%] items-center">
                 <Link
@@ -137,6 +212,14 @@ const logout = () => {
                         <div
                             class="bg-blue-500 flex items-center text-white h-full px-4 rounded-md relative hover:bg-blue-600 transition-all duration-300 ease-in-out"
                         >
+                            <!-- Badge Count -->
+                            <span
+                                v-if="cartCount > 0"
+                                class="absolute -top-2 right-1.5 bg-green-400 text-white text-[11px] font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                            >
+                                {{ cartCount }}
+                            </span>
+
                             <svg
                                 class="group-hover:animate-pulse"
                                 width="17"
@@ -151,28 +234,106 @@ const logout = () => {
                                 />
                             </svg>
                         </div>
+                        <!-- Total Tagihan - Only hide this part -->
                         <div
+                            v-if="hasCartItems"
                             class="bg-blue-100 text-blue-500 rounded-r-md h-full px-2.5 -ml-4 pl-7 flex items-center"
                         >
                             Total Tagihan
                             <span
                                 class="font-bold pl-1.5 group-hover:text-blue-700 transition-all group-hover:animate-pulse duration-300 ease-in-out"
                             >
-                                Rp 150.000</span
+                                Rp
+                                {{
+                                    Number(cartTotal).toLocaleString("id-ID")
+                                }}</span
                             >
                         </div>
                     </Link>
-                    <!-- USER -->
-                    <button
-                        @click="logout"
-                        class="flex items-center border-l border-gray-300 pl-4"
-                    >
-                        <img
-                            src="https://i.pravatar.cc/400"
-                            class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold mr-2"
-                        />
-                        Aldean
-                    </button>
+
+                    <!-- USER MENU -->
+                    <div class="relative" ref="userMenuRef">
+                        <button
+                            @click="toggleUserMenu"
+                            class="flex items-center border-l border-gray-300 pl-4 hover:opacity-80 transition-opacity"
+                        >
+                            <!-- Default Avatar with Initials -->
+                            <div
+                                class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-2"
+                            >
+                                {{ userInitials }}
+                            </div>
+                            <span class="mr-2">{{ user?.name || "User" }}</span>
+                            <svg
+                                :class="[
+                                    'transition-transform duration-200',
+                                    showUserMenu ? 'rotate-180' : '',
+                                ]"
+                                width="12"
+                                height="12"
+                                viewBox="0 0 12 12"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    d="M6 8L2 4H10L6 8Z"
+                                    fill="currentColor"
+                                />
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown Menu -->
+                        <transition
+                            enter-active-class="transition ease-out duration-200"
+                            enter-from-class="transform opacity-0 scale-95"
+                            enter-to-class="transform opacity-100 scale-100"
+                            leave-active-class="transition ease-in duration-75"
+                            leave-from-class="transform opacity-100 scale-100"
+                            leave-to-class="transform opacity-0 scale-95"
+                        >
+                            <div
+                                v-show="showUserMenu"
+                                class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+                            >
+                                <!-- Profile Info -->
+                                <div class="px-4 py-3 border-b border-gray-200">
+                                    <p
+                                        class="text-sm font-semibold text-gray-900"
+                                    >
+                                        {{ user?.name || "User" }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        {{ user?.email || "user@example.com" }}
+                                    </p>
+                                </div>
+
+                                <!-- Logout -->
+                                <div class="py-1">
+                                    <button
+                                        @click="logout"
+                                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                    >
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <path
+                                                d="M6 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V3.33333C2 2.97971 2.14048 2.64057 2.39052 2.39052C2.64057 2.14048 2.97971 2 3.33333 2H6M10.6667 11.3333L14 8M14 8L10.6667 4.66667M14 8H6"
+                                                stroke="currentColor"
+                                                stroke-width="1.5"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                        </svg>
+                                        Keluar
+                                    </button>
+                                </div>
+                            </div>
+                        </transition>
+                    </div>
                 </div>
             </div>
 
@@ -186,6 +347,8 @@ const logout = () => {
                     >
                         <div class="relative">
                             <input
+                                v-model="searchQuery"
+                                @input="handleSearch"
                                 type="text"
                                 placeholder="Cari nama produk ..."
                                 class="w-full bg-[#EDF0F2] border-none focus:ring-0 rounded-md p-2 pl-11"
@@ -249,6 +412,7 @@ const logout = () => {
                                     v-for="category in categories"
                                     :key="category.id"
                                     :category="category"
+                                    @click="handleCategoryClick(category.id)"
                                 />
                             </div>
 
@@ -281,7 +445,7 @@ const logout = () => {
             </template>
         </div>
 
-        <!-- Dynamic height content area -->
+        <!-- content area -->
         <main
             :class="[
                 contentHeight,

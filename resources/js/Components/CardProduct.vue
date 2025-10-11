@@ -1,5 +1,7 @@
 <script setup>
+import { router } from "@inertiajs/vue3";
 import IconPlus from "@/Components/IconPlus.vue";
+import { ref } from "vue";
 
 const props = defineProps({
     product: {
@@ -9,6 +11,28 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["deleteClick"]);
+const imageError = ref(false);
+
+const addToCart = () => {
+    router.post(
+        route("cart.store"),
+        {
+            product_id: props.product.id,
+            quantity: 1,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Optional: Show notification
+                console.log("Product added to cart");
+            },
+        }
+    );
+};
+
+const handleImageError = () => {
+    imageError.value = true;
+};
 </script>
 
 <template>
@@ -18,13 +42,37 @@ const emit = defineEmits(["deleteClick"]);
         <div class="w-full h-full flex flex-col justify-between">
             <!-- IMAGE -->
             <div class="h-[170px] w-full rounded-lg overflow-hidden relative">
+                <!-- Show image if available and no error -->
                 <img
+                    v-if="product.image && !imageError"
                     :src="product.image"
-                    alt="Menu Food"
+                    :alt="product.name"
                     class="object-cover w-full h-full"
+                    @error="handleImageError"
                 />
+                <!-- Show placeholder if no image or error -->
                 <div
-                    class="absolute bottom-2 right-2 p-1.5 bg-white/50 border border-white/50 rounded-md cursor-pointer"
+                    v-else
+                    class="w-full h-full bg-gray-100 flex items-center justify-center"
+                >
+                    <svg
+                        class="w-16 h-16 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                    </svg>
+                </div>
+
+                <div
+                    class="absolute bottom-2 right-2 p-1.5 bg-white/50 border border-white/50 rounded-md cursor-pointer hover:bg-white/70 transition-all"
                     @click="emit('deleteClick')"
                 >
                     <svg
@@ -50,15 +98,18 @@ const emit = defineEmits(["deleteClick"]);
                 </div>
             </div>
 
-            <!-- DESCI -->
+            <!-- DESCRIPTION -->
             <div class="flex flex-col">
-                <div class="text-lg font-medium">{{ product.name }}</div>
+                <div class="text-lg font-medium truncate" :title="product.name">
+                    {{ product.name }}
+                </div>
                 <div class="text-green-600 font-bold text-lg">
                     {{ product.price }}
                 </div>
             </div>
             <button
-                class="bg-blue-600 text-white px-3 py-2.5 rounded-lg flex items-center justify-center text-sm gap-2"
+                @click="addToCart"
+                class="bg-blue-600 text-white px-3 py-2.5 rounded-lg flex items-center justify-center text-sm gap-2 hover:bg-blue-700 transition-colors"
             >
                 <IconPlus /> Keranjang
             </button>

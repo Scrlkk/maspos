@@ -1,66 +1,41 @@
 <script setup>
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
 import { Head, Link, router } from "@inertiajs/vue3";
 import CartBody from "@/Components/CartBody.vue";
-import burger from "@/Assets/Misc/burger.png";
-import coke from "@/Assets/Misc/coke.png";
-import pizza from "@/Assets/Misc/pizza2.png";
-import tea from "@/Assets/Misc/tea.png";
 import AdminLayout from "@/Layouts/AdminLayout.vue";
+import DeleteCartItem from "@/Components/DeleteCartItem.vue";
 
-const source = ref([
-    {
-        id: 1,
-        name: "Burger Spesial",
-        price: 50.0,
-        image: burger,
-        subtotal: 50.0,
+const props = defineProps({
+    carts: {
+        type: Array,
+        default: () => [],
     },
-    {
-        id: 2,
-        name: "Coca Cola",
-        price: 15.0,
-        image: coke,
-        subtotal: 15.0,
+    total: {
+        type: Number,
+        default: 0,
     },
-    {
-        id: 3,
-        name: "Pizza Spesial",
-        price: 80.0,
-        image: pizza,
-        subtotal: 80.0,
-    },
-    {
-        id: 4,
-        name: "Ice Tea",
-        price: 10.0,
-        image: tea,
-        subtotal: 10.0,
-    },
-    {
-        id: 5,
-        name: "Ice Tea",
-        price: 10.0,
-        image: tea,
-        subtotal: 10.0,
-    },
-    {
-        id: 6,
-        name: "Ice Tea",
-        price: 10.0,
-        image: tea,
-        subtotal: 10.0,
-    },
-]);
+});
 
-const hasItems = computed(() => source.value.length > 0);
+const hasItems = computed(() => props.carts.length > 0);
+const showDeleteModal = ref(false);
+const cartToDelete = ref(null);
 
 const back = () => {
-    if (window.history.length > 1) {
-        window.history.back();
-    } else {
-        router.visit(route("dashboard"));
-    }
+    router.visit(route("dashboard"));
+};
+
+const openDeleteModal = (cart) => {
+    cartToDelete.value = cart;
+    showDeleteModal.value = true;
+};
+
+const closeDeleteModal = () => {
+    showDeleteModal.value = false;
+    cartToDelete.value = null;
+};
+
+const handleDeleted = () => {
+    closeDeleteModal();
 };
 
 defineOptions({
@@ -101,9 +76,10 @@ defineOptions({
                     </thead>
                     <tbody>
                         <CartBody
-                            v-for="cart in source"
+                            v-for="cart in carts"
                             :key="cart.id"
-                            :Cart="cart"
+                            :cart="cart"
+                            @delete="openDeleteModal"
                         />
                     </tbody>
                 </table>
@@ -111,10 +87,17 @@ defineOptions({
 
             <!-- Footer with total and buttons -->
             <div
-                class="w-full bg-white px-5 py-4 rounded-b-lg flex gap-6 justify-end items-center shadow-[0_0_20px_rgba(0,0,0,0.1)]"
+                class="w-full bg-white px-5 py-4 rounded-b-lg flex gap-6 justify-between items-center shadow-[0_0_20px_rgba(0,0,0,0.1)]"
             >
+                <div class="flex items-center gap-4">
+                    <span class="text-lg font-semibold text-gray-700"
+                        >Total:</span
+                    >
+                    <span class="text-2xl font-bold text-blue-600"
+                        >Rp {{ total.toLocaleString("id-ID") }}</span
+                    >
+                </div>
                 <div class="flex gap-4">
-                    <!-- Option 1: Using improved back function -->
                     <button
                         @click="back"
                         class="text-blue-500 border border-blue-500 px-7 py-2 rounded-md hover:bg-blue-50 transition-colors"
@@ -123,7 +106,7 @@ defineOptions({
                     </button>
 
                     <Link
-                        href="/dashboard/payment"
+                        :href="route('payment')"
                         class="bg-blue-500 text-white px-9 py-2 rounded-md hover:bg-blue-600 transition-colors"
                     >
                         Bayar
@@ -161,20 +144,27 @@ defineOptions({
                 </p>
                 <Link
                     :href="route('dashboard')"
-                    class="text-blue-500 border border-blue-500 px-7 py-2 rounded-md hover:bg-blue-50 transition-colors"
+                    class="text-blue-500 border border-blue-500 px-7 py-2 rounded-md hover:bg-blue-50 transition-colors inline-block"
                 >
                     Kembali ke Menu
                 </Link>
             </div>
         </div>
+
+        <!-- Delete Modal -->
+        <DeleteCartItem
+            v-if="showDeleteModal"
+            :cart="cartToDelete"
+            @close="closeDeleteModal"
+            @deleted="handleDeleted"
+        />
     </section>
 </template>
 
 <style scoped>
 .scrollbar-hide {
-    /* Hide scrollbar for Chrome, Safari and Opera */
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
