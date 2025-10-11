@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { router } from "@inertiajs/vue3";
 
 const props = defineProps({
-    product: {
+    cart: {
         type: Object,
         required: true,
     },
@@ -12,26 +12,20 @@ const props = defineProps({
 const emit = defineEmits(["close", "deleted"]);
 const isDeleting = ref(false);
 
-const deleteProduct = () => {
+const deleteCartItem = () => {
     isDeleting.value = true;
 
-    router.delete(route("products.destroy", props.product.id), {
+    router.delete(route("cart.destroy", props.cart.id), {
         preserveState: true,
         preserveScroll: true,
         onSuccess: () => {
             isDeleting.value = false;
-            emit("deleted", {
-                type: "info",
-                message: "Produk berhasil dihapus",
-            });
+            emit("deleted");
+            emit("close");
         },
         onError: (errors) => {
-            console.error("Error deleting product:", errors);
+            console.error("Error deleting cart item:", errors);
             isDeleting.value = false;
-            emit("deleted", {
-                type: "error",
-                message: "Gagal menghapus produk",
-            });
         },
     });
 };
@@ -91,11 +85,11 @@ const deleteProduct = () => {
                 </svg>
             </div>
             <div class="border-b pb-5">
-                <div class="text-lg font-bold">Hapus Produk</div>
+                <div class="text-lg font-bold">Hapus dari Keranjang</div>
                 <div class="text-gray-600">
                     Apakah anda yakin ingin menghapus <br />
-                    <span class="font-semibold">{{ product.name }}</span
-                    >?
+                    <span class="font-semibold">{{ cart.name }}</span>
+                    dari keranjang?
                 </div>
             </div>
             <div class="flex justify-between gap-3 pt-1">
@@ -107,7 +101,7 @@ const deleteProduct = () => {
                     Batal
                 </button>
                 <button
-                    @click="deleteProduct"
+                    @click="deleteCartItem"
                     :disabled="isDeleting"
                     class="w-full px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Cart;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -17,7 +18,7 @@ class HandleInertiaRequests extends Middleware
     /**
      * Determine the current asset version.
      */
-    public function version(Request $request): ?string
+    public function version(Request $request): string|null
     {
         return parent::version($request);
     }
@@ -34,6 +35,26 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'categories' => function () {
+                return \App\Models\Category::all();
+            },
+            'cartData' => function () use ($request) {
+                if ($request->user()) {
+                    $carts = Cart::where('user_id', $request->user()->id)->get();
+                    $total = $carts->sum('subtotal');
+                    $count = $carts->sum('quantity');
+
+                    return [
+                        'total' => $total,
+                        'count' => $count,
+                    ];
+                }
+
+                return [
+                    'total' => 0,
+                    'count' => 0,
+                ];
+            },
         ];
     }
 }
