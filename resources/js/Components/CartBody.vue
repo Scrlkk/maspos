@@ -121,7 +121,7 @@ const handleImageError = () => {
         >
             <button
                 @click="removeItem"
-                class="group-text-red-600 group-hover:text-red-800 font-medium"
+                class="text-red-600 group-hover:text-red-800 font-medium"
             >
                 Hapus
             </button>

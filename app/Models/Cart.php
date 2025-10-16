@@ -35,7 +35,7 @@ class Cart extends Model
         return $this->belongsTo(Product::class);
     }
 
-    // Calculate subtotal automatically
+
     protected static function boot()
     {
         parent::boot();

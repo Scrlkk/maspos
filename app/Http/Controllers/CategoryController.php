@@ -16,7 +16,7 @@ class CategoryController extends Controller
             return [
                 'id' => $product->id,
                 'name' => $product->nama,
-                'price' => 'Rp ' . number_format($product->harga, 0, ',', '.'),
+                'price' => $product->harga !== null ? 'Rp ' . number_format((float) $product->harga, 0, ',', '.') : null,
                 'image' => $product->gambar ? asset('storage/' . $product->gambar) : null,
                 'category' => $product->category->nama ?? 'Tanpa Kategori',
                 'category_id' => $product->category_id,
