@@ -38,7 +38,7 @@ class CartController extends Controller
     }
 
     /**
-     * Add product to cart (quantity = 1)
+     * Add product to cart
      */
     public function store(Request $request)
     {
@@ -54,14 +54,14 @@ class CartController extends Controller
             ->first();
 
         if ($cart) {
-            // Increase quantity by 1
+            // Increase quantity
             $cart->quantity += 1;
             $cart->save();
 
             return redirect()->back();
         }
 
-        // Create new cart item with quantity 1
+        // Create new cart item with
         Cart::create([
             'user_id' => request()->user()->id,
             'product_id' => $product->id,
